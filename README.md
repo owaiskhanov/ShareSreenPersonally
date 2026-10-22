@@ -18,17 +18,17 @@ A very light "share my screen and let my friend fix it" app for Windows.
 
 ---
 
-## 1. Get the EXE
+## 1. Download the EXE
 
-The Windows build is produced by GitHub Actions (it compiles the tiny C# input
-helper and packages the app with electron-builder):
+**[Download the latest release →](../../releases/latest)**
 
-1. Open the **Actions** tab → **Build Windows app** → **Run workflow**
-   (or push a tag like `v1.0.0`).
-2. When it is green, either download the artifact `ScreenLink-windows`, or grab
-   the EXEs from the **Releases** page:
-   - `ScreenLink-Setup-1.0.0.exe` — installer (Start-menu shortcut, ~90 MB)
-   - `ScreenLink-Portable-1.0.0.exe` — single file, nothing to install
+- `ScreenLink-Portable-1.0.0.exe` — **single file, just double-click.** Nothing to install. Easiest for helping a friend.
+- `ScreenLink-Setup-1.0.0.exe` — installer with a Start-menu shortcut (~76 MB).
+
+The build is produced by GitHub Actions (`.github/workflows/build-windows.yml`):
+it compiles the tiny C# input helper, packages the app with electron-builder and
+attaches both EXEs to the release. To rebuild: **Actions → Build Windows app →
+Run workflow**.
 
 Both friends need the app on the computer that is being shared. The helper can
 also watch from a plain browser tab (see §4).
@@ -148,4 +148,5 @@ tests/     relay smoke test (node tests/relay.test.js)
 | ID rejected as "already in use" | Another session is using that ID — press *Stop sharing* and start again. |
 | Black/empty screen | Screen sharing needs a desktop session, not a locked/RDP-disconnected PC. |
 | Control does nothing | The sharing PC must run the **desktop app** (browser viewers are view-only) and you must press **Allow control**. |
+| Mouse/keys work everywhere except one app | That app runs as administrator; Windows blocks input from non-elevated programs. Right-click ScreenLink → *Run as administrator* on the sharing PC. |
 | Picture freezes on some networks | Add a TURN server in Settings. |

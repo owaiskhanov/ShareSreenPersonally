@@ -337,8 +337,12 @@
       setBusy(els.startShare, false);
     } catch (err) {
       setBusy(els.startShare, false);
-      if (err && (err.name === 'NotAllowedError' || err.name === 'AbortError')) {
+      if (err && err.name === 'AbortError') {
         toast('Sharing was cancelled');
+      } else if (err && err.name === 'NotAllowedError' && !Bridge.isElectron) {
+        toast('The browser blocked screen capture here. Install the Windows app to share for real.', 'error');
+      } else if (err && err.name === 'NotAllowedError') {
+        toast('Screen capture was blocked — check Windows privacy settings for Desktop apps.', 'error');
       } else {
         toast(`Could not start sharing: ${err.message}`, 'error');
       }
