@@ -1,0 +1,15 @@
+# One-click relay on Render's free tier.
+# New → Blueprint → point at this repo. Then use wss://<service>.onrender.com
+# in ScreenLink → Settings → Relay server.
+services:
+  - type: web
+    name: screenlink-relay
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install --omit=dev --no-audit --no-fund
+    startCommand: node index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"

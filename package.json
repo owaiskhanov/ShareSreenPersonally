@@ -1,0 +1,67 @@
+{
+  "name": "screenlink",
+  "productName": "ScreenLink",
+  "version": "1.0.0",
+  "description": "Tiny app to share and control your friend's screen",
+  "main": "electron/main.js",
+  "author": "owaiskhanov",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "demo": "node server/index.js",
+    "server": "node server/index.js",
+    "build:helper": "csc /nologo /optimize /target:exe /out:electron/input-helper.exe /r:System.Windows.Forms.dll electron/input-helper.cs",
+    "dist": "electron-builder --win --x64 --publish never",
+    "test": "node tests/relay.test.js"
+  },
+  "devDependencies": {
+    "electron": "^32.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.screenlink.app",
+    "productName": "ScreenLink",
+    "copyright": "ScreenLink",
+    "files": [
+      "electron/main.js",
+      "electron/preload.js",
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "electron/input-helper.exe",
+        "to": "input-helper.exe"
+      }
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "artifactName": "ScreenLink-Setup-${version}.${ext}",
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": true,
+      "runAfterFinish": true,
+      "shortcutName": "ScreenLink",
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "ScreenLink-Portable-${version}.exe"
+    }
+  }
+}

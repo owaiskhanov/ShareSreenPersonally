@@ -1,0 +1,88 @@
+name: Build Windows app
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Create/update a GitHub Release with this tag (leave empty to only upload a build artifact)"
+        required: false
+        default: ""
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # ---------------------------------------------------------------
+      # The remote-control helper is plain C# so it needs no toolchain
+      # beyond the compiler. Microsoft.Net.Compilers ships a standalone
+      # csc.exe as a nuget package.
+      # ---------------------------------------------------------------
+      - name: Get C# compiler
+        shell: pwsh
+        run: |
+          $url = "https://api.nuget.org/v3-flatcontainer/microsoft.net.compilers/3.11.0/microsoft.net.compilers.3.11.0.nupkg"
+          Invoke-WebRequest -Uri $url -OutFile compilers.zip
+          Expand-Archive compilers.zip -DestinationPath compilers
+          $csc = Get-ChildItem -Path compilers -Recurse -Filter csc.exe |
+            Where-Object { $_.FullName -like "*tools\csc.exe" } | Select-Object -First 1
+          if (-not $csc) { throw "csc.exe not found in package" }
+          echo "CSC=$($csc.FullName)" >> $env:GITHUB_ENV
+
+      - name: Build input helper
+        shell: pwsh
+        run: |
+          & "$env:CSC" /nologo /optimize /target:exe /out:electron/input-helper.exe `
+            /r:System.Windows.Forms.dll electron/input-helper.cs
+          if (-not (Test-Path electron/input-helper.exe)) { throw "helper build failed" }
+          Get-Item electron/input-helper.exe | Format-List Name, Length
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Package app
+        run: npm run dist
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List output
+        shell: pwsh
+        run: Get-ChildItem dist | Format-Table Name, Length
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScreenLink-windows
+          path: |
+            dist/*.exe
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish release
+        if: ${{ github.event_name == 'push' || inputs.release_tag != '' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.release_tag != '' && inputs.release_tag || github.ref_name }}
+        run: |
+          if (gh release view $env:TAG 2>$null) {
+            gh release upload $env:TAG dist/*.exe --clobber
+          } else {
+            gh release create $env:TAG dist/*.exe `
+              --title "ScreenLink $env:TAG" `
+              --notes "Windows build of ScreenLink. Download **ScreenLink-Setup-*.exe** to install, or **ScreenLink-Portable-*.exe** to run without installing."
+          }
