@@ -1,10 +1,18 @@
 {
   "name": "screenlink",
   "productName": "ScreenLink",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Tiny app to share and control your friend's screen",
   "main": "electron/main.js",
   "author": "owaiskhanov",
+  "homepage": "https://github.com/owaiskhanov/ShareSreenPersonally#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/owaiskhanov/ShareSreenPersonally.git"
+  },
+  "bugs": {
+    "url": "https://github.com/owaiskhanov/ShareSreenPersonally/issues"
+  },
   "license": "MIT",
   "scripts": {
     "start": "electron .",
@@ -12,7 +20,8 @@
     "server": "node server/index.js",
     "build:helper": "csc /nologo /optimize /target:exe /out:electron/input-helper.exe /r:System.Windows.Forms.dll electron/input-helper.cs",
     "dist": "electron-builder --win --x64 --publish never",
-    "test": "node tests/relay.test.js"
+    "test": "node tests/relay.test.js",
+    "verify:dist": "node scripts/verify-dist.js"
   },
   "devDependencies": {
     "electron": "^32.2.0",

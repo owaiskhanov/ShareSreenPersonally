@@ -13,14 +13,21 @@ on:
       - "arena/**"
     tags:
       - "v*"
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
 
+concurrency:
+  group: screenlink-windows-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     steps:
       - uses: actions/checkout@v4
@@ -28,6 +35,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      # Fail fast: the relay is the only thing that can be unit-tested here.
+      - name: Test the relay
+        run: |
+          npm ci --no-audit --no-fund --prefix server
+          npm test
 
       # ---------------------------------------------------------------
       # The remote-control helper is plain C# so it needs no toolchain
@@ -54,28 +71,55 @@ jobs:
           Get-Item electron/input-helper.exe | Format-List Name, Length
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Package app
         run: npm run dist
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: List output
+      # Never publish a build we have not looked at.
+      - name: Verify the package
+        run: npm run verify:dist
+
+      - name: Smoke test the packaged app
         shell: pwsh
-        run: Get-ChildItem dist | Format-Table Name, Length
+        run: |
+          $exe = (Resolve-Path "dist\win-unpacked\ScreenLink.exe").Path
+          $proc = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 20
+          $running = @(Get-Process -Name ScreenLink -ErrorAction SilentlyContinue)
+          if ($proc.HasExited) {
+            throw "ScreenLink exited during startup (exit code $($proc.ExitCode))"
+          }
+          if ($running.Count -eq 0) {
+            throw "ScreenLink did not stay running after 20 seconds"
+          }
+          Write-Host "ScreenLink started and stayed alive ($($running.Count) process(es))."
+          $running | Stop-Process -Force
+          Start-Sleep -Seconds 2
+
+      - name: Write checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem dist\*.exe | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($_.Name)"
+          } | Set-Content -Encoding ascii dist\SHA256SUMS.txt
+          Get-Content dist\SHA256SUMS.txt
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ScreenLink-windows
+          name: ScreenLink-windows-${{ github.sha }}
           path: |
             dist/*.exe
+            dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
 
-      # Runs for tag pushes (v1.2.3) and for manual runs where a tag was typed.
+      # Publishing only ever happens for a version tag or an explicit
+      # release_tag input. A branch build only produces the artifact above.
       - name: Publish release
         if: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != '' }}
         shell: pwsh
@@ -83,10 +127,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ inputs.release_tag != '' && inputs.release_tag || github.ref_name }}
         run: |
+          $notes = "Windows build of ScreenLink (x64, unsigned). Download **ScreenLink-Setup-*.exe** to install, or **ScreenLink-Portable-*.exe** to run without installing. **SHA256SUMS.txt** lets you verify the download. SmartScreen may warn because the build is not code-signed: More info -> Run anyway. You still need a relay server so two computers can find each other - see the README."
           if (gh release view $env:TAG 2>$null) {
-            gh release upload $env:TAG dist/*.exe --clobber
+            gh release upload $env:TAG dist/*.exe dist/SHA256SUMS.txt --clobber
           } else {
-            gh release create $env:TAG dist/*.exe `
+            gh release create $env:TAG dist/*.exe dist/SHA256SUMS.txt `
+              --target $env:GITHUB_SHA `
               --title "ScreenLink $env:TAG" `
-              --notes "Windows build of ScreenLink. Download **ScreenLink-Setup-*.exe** to install, or **ScreenLink-Portable-*.exe** to run without installing."
+              --notes $notes
           }

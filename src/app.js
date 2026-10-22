@@ -81,6 +81,7 @@
       rtc: null,
       allowed: false,
       peerName: '',
+      registerTimer: null,
     },
     view: {
       active: false,
@@ -138,7 +139,9 @@
     if (location.protocol === 'http:' || location.protocol === 'https:') {
       return `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`;
     }
-    return 'ws://localhost:8787';
+    // Packaged desktop app: there is no "same origin" relay, and pretending
+    // ws://localhost:8787 is configured only hides the setup step.
+    return '';
   }
 
   function normalizeRelay(value) {
@@ -381,6 +384,8 @@
   async function handleHostMessage(msg) {
     switch (msg.type) {
       case 'registered':
+        clearTimeout(state.host.registerTimer);
+        state.host.registerTimer = null;
         hostStatus('Waiting for your friend to connect…');
         break;
 
@@ -413,7 +418,22 @@
       case 'error':
         toast(msg.message || 'Relay error', 'error');
         if (msg.code === 'id_taken') {
-          hostStatus('That ID was already taken — restart sharing for a new one.');
+          // Happens when the relay reconnects before it has cleaned up our
+          // previous socket. The ID/password stay valid, so just try again.
+          hostStatus('Relay is still closing the old session — retrying…');
+          clearTimeout(state.host.registerTimer);
+          state.host.registerTimer = setTimeout(() => {
+            if (!state.host.active) return;
+            const relay = state.host.relay;
+            if (relay && relay.isOpen) {
+              relay.send({
+                type: 'register',
+                id: state.host.id,
+                secret: state.host.secret,
+                name: state.settings.name || 'Friend',
+              });
+            }
+          }, 3000);
         }
         break;
 
@@ -538,6 +558,8 @@
       state.host.stream = null;
     }
 
+    clearTimeout(state.host.registerTimer);
+    state.host.registerTimer = null;
     state.host.active = false;
     state.host.id = null;
     state.host.pass = null;

@@ -44,8 +44,9 @@ function serveStatic(req, res) {
   const rel = urlPath === '/' ? 'index.html' : urlPath.replace(/^\/+/, '');
   const file = path.join(WEB_ROOT, rel);
 
-  // never escape the web root
-  if (!file.startsWith(WEB_ROOT)) {
+  // never escape the web root (compare with the separator so a sibling
+  // directory such as `src-old` can never pass the prefix test)
+  if (file !== WEB_ROOT && !file.startsWith(WEB_ROOT + path.sep)) {
     res.writeHead(403).end('forbidden');
     return;
   }
@@ -125,11 +126,26 @@ wss.on('connection', (ws) => {
         if (!/^\d{9}$/.test(id) || secret.length < 16) {
           return send(ws, { type: 'error', code: 'bad_request', message: 'Invalid ID or password hash.' });
         }
+        // A viewer must never be able to claim/hijack a room: only hosts
+        // register. Without this a joined peer could delete the host's room.
+        if (ws.role === 'viewer') {
+          return send(ws, { type: 'error', code: 'bad_request', message: 'Leave the session before you start sharing.' });
+        }
         if (rooms.has(id)) {
           return send(ws, { type: 'error', code: 'id_taken', message: 'That ID is already in use. Generate a new one.' });
         }
-        // one session per socket
-        if (ws.roomId) rooms.delete(ws.roomId);
+        // one session per socket: drop the previous room this socket hosted
+        if (ws.role === 'host' && ws.roomId) {
+          const old = rooms.get(ws.roomId);
+          if (old && old.host === ws) {
+            rooms.delete(ws.roomId);
+            if (old.viewer && old.viewer.readyState === 1) {
+              send(old.viewer, { type: 'closed', reason: 'host_left' });
+              try { old.viewer.close(); } catch { /* ignore */ }
+            }
+          }
+          ws.roomId = null;
+        }
         rooms.set(id, {
           host: ws, secret, viewer: null, joinFails: 0, blockedUntil: 0,
           createdAt: Date.now(), hostName: String(msg.name || '').slice(0, 40),
@@ -143,6 +159,7 @@ wss.on('connection', (ws) => {
       case 'unregister':
         if (ws.role === 'host' && ws.roomId) closeRoom(ws.roomId, 'host_left');
         ws.roomId = null;
+        ws.role = null;
         break;
 
       /* ---------------- viewer side ---------------- */
