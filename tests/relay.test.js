@@ -105,6 +105,30 @@ async function main() {
   check('viewer hears the host leave', Boolean(left));
   viewer2.close();
 
+  // a joined viewer must not be able to delete/hijack the host's room
+  const host2 = new Peer();
+  await host2.ready;
+  host2.send({ type: 'register', id: '222333444', secret: sha('2:3'), name: 'Host2' });
+  check('second host registers', Boolean(await host2.next('registered')));
+
+  const view2 = new Peer();
+  await view2.ready;
+  view2.send({ type: 'join', id: '222333444', secret: sha('2:3'), name: 'Viewer2' });
+  check('viewer joins second host', Boolean(await view2.next('joined')));
+  await host2.next('peer-joined');
+
+  view2.send({ type: 'register', id: '888777666', secret: sha('8:9'), name: 'hijack' });
+  const hijackErr = await view2.next('error');
+  check('a viewer cannot register a room', hijackErr && hijackErr.code === 'bad_request');
+
+  const probe = new Peer();
+  await probe.ready;
+  probe.send({ type: 'join', id: '222333444', secret: sha('2:3'), name: 'probe' });
+  check('the host room survives the attempt', Boolean(await probe.next('joined')));
+  probe.close();
+  view2.close();
+  host2.close();
+
   // brute force guard
   const bruteforce = [];
   for (let i = 0; i < 6; i += 1) {

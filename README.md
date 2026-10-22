@@ -22,19 +22,26 @@ A very light "share my screen and let my friend fix it" app for Windows.
 
 **[Download the latest release →](../../releases/latest)**
 
-- `ScreenLink-Portable-1.0.0.exe` — **single file, just double-click.** Nothing to install. Easiest for helping a friend.
-- `ScreenLink-Setup-1.0.0.exe` — installer with a Start-menu shortcut (~76 MB).
+- `ScreenLink-Portable-<version>.exe` — **single file, just double-click.** Nothing to install. Easiest for helping a friend.
+- `ScreenLink-Setup-<version>.exe` — installer with a Start-menu shortcut (~77 MB).
+- `SHA256SUMS.txt` — checksums, if you want to verify the download.
 
 The build is produced by GitHub Actions (`.github/workflows/build-windows.yml`):
-it compiles the tiny C# input helper, packages the app with electron-builder and
-attaches both EXEs to the release. To rebuild: **Actions → Build Windows app →
-Run workflow**.
+it compiles the tiny C# input helper, runs the relay test suite, packages the app
+with electron-builder, checks the packaged files, boots the EXE once, and only
+then attaches both EXEs to the release. To rebuild: **Actions → Build Windows app
+→ Run workflow** (a tag like `v1.0.1` publishes; PRs and branch pushes only
+produce an artifact).
 
 Both friends need the app on the computer that is being shared. The helper can
 also watch from a plain browser tab (see §4).
 
 > First launch: Windows SmartScreen may show "unrecognised app" because the
 > build is not code-signed. *More info → Run anyway.*
+
+> The EXE ships **without** a relay address — nothing is preconfigured, so the
+> app shows "No relay server set yet". Click the gear icon and paste the address
+> from §2 once; it is remembered in `%APPDATA%\ScreenLink\settings.json`.
 
 ## 2. Point it at a relay (2 minutes)
 
@@ -121,15 +128,20 @@ can join from a browser tab:
 
 ```powershell
 git clone <this repo> ; cd ShareSreenPersonally
-npm install
+npm ci
 
 # native input helper (Windows SDK / .NET Framework compiler)
 csc /nologo /optimize /target:exe /out:electron/input-helper.exe `
     /r:System.Windows.Forms.dll electron/input-helper.cs
 
-npm start        # run the app
-npm run dist     # build the installer + portable exe in dist/
+npm start             # run the app
+npm run dist          # build the installer + portable exe in dist/
+npm run verify:dist   # check the EXEs + bundled helper + app.asar
 ```
+
+The same three checks the CI runs are `npm test` (relay), `npm run verify:dist`
+(package contents) and a copy of `dist\win-unpacked\ScreenLink.exe` that must
+stay alive for 20 seconds.
 
 Layout:
 
@@ -137,6 +149,7 @@ Layout:
 electron/  main process, preload bridge, native input helper (C#)
 src/       UI + WebRTC + relay client (the same files the browser uses)
 server/    tiny WebSocket relay that also serves src/
+scripts/   verify-dist.js — package sanity checks used by CI
 tests/     relay smoke test (node tests/relay.test.js)
 ```
 
