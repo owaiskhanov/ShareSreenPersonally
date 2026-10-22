@@ -22,11 +22,28 @@ const MIN_INSTALLER_BYTES = 40 * MB; // a real Electron installer is ~75 MB
 
 let failed = 0;
 
+const inActions = process.env.GITHUB_ACTIONS === 'true';
+
 const ok = (message) => console.log(`  ok    ${message}`);
 const bad = (message) => {
   failed += 1;
   console.error(`  FAIL  ${message}`);
+  // Surface the reason in the Actions UI, where it is visible without logs.
+  if (inActions) console.log(`::error title=verify-dist::${message.replace(/[\r\n]+/g, ' ')}`);
 };
+
+/** A Windows PE file always starts with "MZ". */
+function isPeFile(file) {
+  try {
+    const fd = fs.openSync(file, 'r');
+    const sig = Buffer.alloc(2);
+    fs.readSync(fd, sig, 0, 2, 0);
+    fs.closeSync(fd);
+    return sig.toString('latin1') === 'MZ';
+  } catch {
+    return false;
+  }
+}
 
 function artifacts(prefix, ext) {
   if (!fs.existsSync(dist)) return [];
@@ -43,6 +60,10 @@ function checkExe(name) {
     bad(`${name} is only ${(size / MB).toFixed(1)} MB — the build looks truncated`);
     return;
   }
+  if (!isPeFile(full)) {
+    bad(`${name} is not a Windows executable`);
+    return;
+  }
   ok(`${name} · ${(size / MB).toFixed(1)} MB`);
 }
 
@@ -53,11 +74,12 @@ function checkHelper() {
     return;
   }
   const size = fs.statSync(helper).size;
-  if (size < 100 * 1024) {
-    bad(`input-helper.exe is only ${size} bytes — the C# helper build looks broken`);
+  // A csc-built helper is tiny (a few KB); what matters is that it is a real PE.
+  if (size < 3 * 1024 || !isPeFile(helper)) {
+    bad(`input-helper.exe looks broken (${size} bytes, PE=${isPeFile(helper)})`);
     return;
   }
-  ok(`input-helper.exe bundled · ${Math.round(size / 1024)} KB`);
+  ok(`input-helper.exe bundled · ${(size / 1024).toFixed(0)} KB`);
 }
 
 function checkAsar() {
@@ -103,6 +125,8 @@ function main() {
   checkAsar();
 
   if (failed) {
+    const listing = fs.readdirSync(dist).join(', ');
+    console.error(`\ndist/ contains: ${listing}`);
     console.error(`\n${failed} check(s) failed.`);
     process.exit(1);
   }
