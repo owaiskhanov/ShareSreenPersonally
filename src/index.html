@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; img-src 'self' data:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src * ws: wss:;" />
+  <title>ScreenLink</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <button class="brand" id="brand-home" title="Home">
+      <span class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2.5" y="4" width="19" height="13" rx="2.5" />
+          <path d="M9 21h6M12 17v4" />
+          <path d="M12 7v7M9 10.5l3-3 3 3" />
+        </svg>
+      </span>
+      <span>ScreenLink</span>
+    </button>
+    <div class="top-actions">
+      <span id="relay-chip" class="chip hidden" title="Relay server"></span>
+      <button class="icon-btn" id="btn-settings" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3.2" />
+          <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.09a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ------------------------------------------------------------ HOME -->
+    <section id="screen-home" class="screen active">
+      <div class="hero">
+        <h1>Share your screen.<br /><span class="grad">Let a friend help.</span></h1>
+        <p class="muted">Hand over your screen for a minute, watch them fix it, take it back.</p>
+      </div>
+
+      <div class="pick-grid">
+        <button class="pick-card accent-green" id="go-share">
+          <span class="pick-icon">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2.5" y="4" width="19" height="12.5" rx="2.5" /><path d="M8.5 20.5h7M12 16.5v4" />
+              <path d="M12 6.5v6M9.2 9.3 12 6.5l2.8 2.8" />
+            </svg>
+          </span>
+          <span class="pick-title">Share my screen</span>
+          <span class="pick-sub">Show my screen and let a friend control it</span>
+        </button>
+
+        <button class="pick-card accent-blue" id="go-view">
+          <span class="pick-icon">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+              <circle cx="12" cy="12" r="3.2" />
+            </svg>
+          </span>
+          <span class="pick-title">Control a friend</span>
+          <span class="pick-sub">I have their ID and password</span>
+        </button>
+      </div>
+
+      <form class="connect-card" id="quick-connect" autocomplete="off">
+        <div class="field">
+          <label for="quick-id">Friend's ID</label>
+          <input id="quick-id" inputmode="numeric" maxlength="11" placeholder="123 456 789" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="quick-pass">Password</label>
+          <input id="quick-pass" maxlength="40" placeholder="their password" autocomplete="off" />
+        </div>
+        <button class="btn btn-blue" type="submit" id="quick-connect-btn">Connect</button>
+      </form>
+
+      <div class="hint-row">
+        <span class="dot ok"></span><span id="relay-summary" class="muted small">Relay not set</span>
+        <button class="link-btn" id="home-open-settings">change</button>
+      </div>
+    </section>
+
+    <!-- ----------------------------------------------------------- SHARE -->
+    <section id="screen-share" class="screen">
+      <div class="section-head">
+        <button class="back-btn" data-home>←</button>
+        <div>
+          <h2>Share my screen</h2>
+          <p class="muted small">You stay in control: your friend can only use the mouse and keyboard after you allow it.</p>
+        </div>
+      </div>
+
+      <div class="split">
+        <div class="panel">
+          <div id="share-setup">
+            <h3 class="panel-title">What to share</h3>
+            <div id="source-list" class="source-list">
+              <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+            </div>
+            <label class="check-row" id="audio-row">
+              <input type="checkbox" id="share-audio" />
+              <span>Also share computer sound</span>
+            </label>
+            <button class="btn btn-green wide" id="btn-start-share">Start sharing</button>
+          </div>
+
+          <div id="share-live" class="hidden">
+            <h3 class="panel-title">Your session is live</h3>
+            <div class="id-block">
+              <span class="id-label">Give your friend this ID</span>
+              <div class="id-value" id="my-id">— — —</div>
+              <button class="btn btn-ghost small" id="btn-copy-id">Copy ID</button>
+            </div>
+            <div class="id-block sub">
+              <span class="id-label">Password</span>
+              <div class="pw-row">
+                <code id="my-pass">—</code>
+                <button class="link-btn" id="btn-copy-pass">copy</button>
+                <button class="link-btn" id="btn-new-pass">new</button>
+              </div>
+            </div>
+            <div class="status-line" id="host-status">
+              <span class="spinner"></span><span>Waiting for your friend to connect…</span>
+            </div>
+            <button class="btn btn-ghost wide" id="btn-stop-share">Stop sharing</button>
+          </div>
+        </div>
+
+        <div class="panel preview-panel">
+          <h3 class="panel-title">Preview</h3>
+          <div class="preview-wrap">
+            <video id="preview-video" autoplay muted playsinline></video>
+            <div class="preview-empty" id="preview-empty">
+              <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.4"
+                   stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2.5" y="4" width="19" height="13" rx="2.5" /><path d="M8.5 21h7M12 17v4" />
+              </svg>
+              <p class="muted small">Nothing shared yet</p>
+            </div>
+          </div>
+          <div class="stat-row" id="host-stats"></div>
+        </div>
+      </div>
+
+      <div class="control-bar hidden" id="host-control-bar">
+        <div class="cb-left">
+          <span class="pulse-dot"></span>
+          <b id="host-control-text">Friend is controlling your screen</b>
+        </div>
+        <button class="btn btn-red small" id="btn-revoke" title="Hotkey: Ctrl+Shift+F12">Stop their control</button>
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------------ VIEW -->
+    <section id="screen-view" class="screen">
+      <div class="section-head">
+        <button class="back-btn" data-home>←</button>
+        <div>
+          <h2>Control a friend</h2>
+          <p class="muted small">Ask your friend for their ID and password.</p>
+        </div>
+      </div>
+
+      <form class="connect-card" id="view-form" autocomplete="off">
+        <div class="field">
+          <label for="view-id">Friend's ID</label>
+          <input id="view-id" inputmode="numeric" maxlength="11" placeholder="123 456 789" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="view-pass">Password</label>
+          <input id="view-pass" maxlength="40" placeholder="their password" autocomplete="off" />
+        </div>
+        <button class="btn btn-blue" type="submit" id="view-connect-btn">Connect</button>
+      </form>
+
+      <div id="view-stage" class="stage hidden">
+        <div class="stage-video" id="stage-video" tabindex="0">
+          <video id="remote-video" autoplay playsinline></video>
+          <div class="stage-overlay" id="stage-overlay">
+            <div class="spinner big"></div>
+            <span id="stage-overlay-text">Connecting…</span>
+          </div>
+        </div>
+        <div class="toolbar">
+          <div class="tb-left">
+            <span class="dot" id="remote-dot"></span>
+            <span id="remote-status" class="small">Connecting…</span>
+            <span class="tb-stats" id="view-stats"></span>
+          </div>
+          <div class="tb-right">
+            <button class="tb-btn" id="btn-request-control" title="Ask your friend for mouse and keyboard access">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"
+                   stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 3l14 7-6 1.6L10.5 18z" />
+              </svg>
+              Request control
+            </button>
+            <button class="tb-btn" id="btn-clip-send" title="Send your clipboard to your friend">Send clipboard</button>
+            <button class="tb-btn" id="btn-fullscreen" title="Fullscreen (F11)">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"
+                   stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 9V4h5M20 15v5h-5M20 9V4h-5M4 15v5h5" />
+              </svg>
+            </button>
+            <button class="tb-btn danger" id="btn-disconnect">Disconnect</button>
+          </div>
+        </div>
+        <div class="control-note hidden" id="control-note"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- --------------------------------------------------------- DIALOGS -->
+  <div class="modal-backdrop hidden" id="settings-modal">
+    <div class="modal">
+      <h3>Settings</h3>
+      <div class="field">
+        <label for="relay-input">Relay server</label>
+        <input id="relay-input" spellcheck="false" placeholder="wss://your-relay.onrender.com" />
+        <p class="muted tiny">
+          ScreenLink only needs a tiny relay to introduce the two computers. Your screen never passes through it.
+          See <b>README.md</b> for a 2-minute free setup, or use <code>ws://192.168.1.10:8787</code> on your own network.
+        </p>
+      </div>
+      <div class="field">
+        <label for="display-name">Your name (shown to your friend)</label>
+        <input id="display-name" maxlength="30" placeholder="Owais" />
+      </div>
+      <div class="field">
+        <label for="turn-input">TURN server (optional, for strict networks)</label>
+        <input id="turn-input" spellcheck="false" placeholder="turn:host:3478|user|pass" />
+        <p class="muted tiny">
+          Only needed if the picture never appears on a locked-down office or hotel network.
+          Format: <code>turn:host:3478|username|password</code>
+        </p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="settings-cancel">Cancel</button>
+        <button class="btn btn-green" id="settings-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="control-modal">
+    <div class="modal">
+      <h3>Allow control?</h3>
+      <p class="muted" id="control-modal-text">Your friend wants to use your mouse and keyboard.</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="control-deny">Deny</button>
+        <button class="btn btn-green" id="control-allow">Allow control</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts" class="toasts"></div>
+
+  <script src="keys.js"></script>
+  <script src="net.js"></script>
+  <script src="bridge.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
